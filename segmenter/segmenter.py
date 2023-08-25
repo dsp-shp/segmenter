@@ -1,5 +1,6 @@
-from . import checks, refreshers, updaters
-from .utils import Logger, Table
+from .modules import checks, refreshers, updaters
+from .modules.utils import Logger, Table
+# from .modules.utils import Logger, Table
 from contextlib import contextmanager
 from datetime import datetime
 from sqlalchemy import create_engine, engine
