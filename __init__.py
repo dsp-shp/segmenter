@@ -7,5 +7,5 @@
 и удаление пользовательских сегментов.
 
 """
-from .source.segmenter import Segmenter
-from .source.utils import Logger, Table
+from .segmenter.segmenter import Segmenter
+from .segmenter.utils import Logger, Table
