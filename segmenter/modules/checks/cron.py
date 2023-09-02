@@ -9,10 +9,13 @@ def check_cron(
     **kwargs
 ) -> typing.Tuple[pd.core.series.Series, typing.Union[bool, None]]:
     """
-    Проверка CRON-расписания
-    ========================
+    Проверка готовности по CRON-расписанию
+    ======================================
 
     Декорируется `logger.decorate(...)` методом в рамках работы Сегментера.
+
+    Возвращает:
+        ...
 
     """
     cron_prev = Cron(refresh_cron).schedule().prev().replace(microsecond=0, tzinfo=None)

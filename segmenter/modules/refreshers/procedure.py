@@ -18,8 +18,7 @@ def refresh_procedure(
     Функция выполняет пересчет сегмента и возвращает результат работы.
 
     Аргументы:
-        sql (str): SQL запрос вызова процедуры вида 
-            "call public.update_test_segment();"
+        sql (str): вызов процедуры вида "call public.update_test_segment();"
         сon (sqlalchemy.engine.Connection): SQLalchemy подключение
         table_name (Table): сегментная таблица
 
@@ -29,7 +28,7 @@ def refresh_procedure(
     """
     con.execute(sql)
 
-    return (pd.read_sql_query("""
+    return (pd.read_sql("""
         with _0 as (
             select distinct id, actual_begin, actual_end, processed
             from {}

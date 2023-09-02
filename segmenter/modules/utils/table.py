@@ -1,4 +1,6 @@
 from collections import namedtuple
+import pandas as pd
+import typing
 
 class Table(namedtuple('Table', ['schema', 'table'])):
     """
@@ -26,7 +28,7 @@ class Table(namedtuple('Table', ['schema', 'table'])):
         )
         
     def __init__(self, table: str, default_schema: str = 'public') -> None:
-        self.data = None
+        self.data: typing.union[pd.core.frame.DataFrame, None] = None
 
     def __str__(self) -> str: 
         return '{}.{}'.format(self.schema, self.table)

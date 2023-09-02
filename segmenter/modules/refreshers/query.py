@@ -26,7 +26,7 @@ def refresh_query(
         pd.core.frame.DataaFrame: датафрейм с обработанными записями сегмента
     
     """
-    columns = pd.read_sql_query(sql, con=con).columns
+    columns = pd.read_sql(sql, con=con).columns
     _columns = ['_.' + x for x in columns if x != 'id']
     _new_columns = {('_new.' + x): ('new_' + x) for x in columns if x != 'id'}
     
@@ -105,7 +105,7 @@ def refresh_query(
         """.format(table_name = table_name)
     )
 
-    return (pd.read_sql_query("""
+    return (pd.read_sql("""
         with _0 as (
             select distinct id, actual_begin, actual_end, processed
             from {}

@@ -1,9 +1,10 @@
+from ..utils.table import Table
 from sqlalchemy import engine
 import pandas as pd
 import typing
 
 def check_table(
-    table_name: str,
+    table_name: typing.Union[str, Table],
     get_data: bool = False,
     con: engine.Connection = None,
     **kwargs
@@ -19,8 +20,9 @@ def check_table(
         get_data (bool): необходимо ли возвращать записи или же достаточно лишь
             перечня атрибутов коллекции
         con (sqlalchemy.engine.Connection): активное подключение к хранилищу
+    
     Возвращает:
-        pd.core.frame.DataFrame: итоговый датафрейм
+        ...
     
     """
     get, chunksize = (lambda x:x, None) if get_data == True else (next, 0)

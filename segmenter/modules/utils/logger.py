@@ -62,7 +62,6 @@ class Logger(logging.Logger):
         if not connect:
             self.warning('Не передан метод подключения к хранилищу')
             return
-        
         self.connect = connect
         with self.connect() as con:
             self._table.data = pd.read_sql_query(
@@ -171,6 +170,7 @@ class Logger(logging.Logger):
                     return str(data)
 
             try:
+                ### ... 
                 __flat_locals = {**locals(), **locals().get('kwargs', {})}
                 __signature = {**inspect.signature(func).parameters}
                 __signature_kwargs = {
