@@ -6,10 +6,10 @@ import typing
 
 def check_consistency(
     segment_id: str,
+    con: engine.Connection,
     table_name: typing.Union[str, Table],
-    con: engine.Connection = None,
     **kwargs
-) -> typing.Tuple[pd.core.series.Series, typing.Union[bool, None]]:
+) -> typing.Tuple[pd.Series, typing.Union[bool, None]]:
     """
     Проверка соответствия конфигурационному файлу
     =============================================

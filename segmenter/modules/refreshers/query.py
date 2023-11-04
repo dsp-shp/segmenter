@@ -1,14 +1,14 @@
 from ..utils import Table
-from sqlalchemy import engine
+from sqlalchemy import engine, text
 import pandas as pd
 import typing
 
 def refresh_query(
     table_name: Table,
-    sql: str = None,
-    con: engine.Connection = None,
+    sql: str,
+    con: engine.Connection,
     **kwargs
-) -> typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+) -> typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
     """
     Пересчет сегмента по запросу
     ============================
@@ -30,7 +30,7 @@ def refresh_query(
     _columns = ['_.' + x for x in columns if x != 'id']
     _new_columns = {('_new.' + x): ('new_' + x) for x in columns if x != 'id'}
     
-    con.execute(
+    con.execute(text(
         """                
             drop table if exists _new;
             create temp table _new as
@@ -102,7 +102,7 @@ def refresh_query(
                 and test_segment.id = _grid.id 
                 and test_segment.actual_end = 'infinity' 
                 and _grid.changed;
-        """.format(table_name = table_name)
+        """.format(table_name = table_name))
     )
 
     return (pd.read_sql("""
@@ -118,4 +118,4 @@ def refresh_query(
         left join _0 _1 on _0.id = _1.id and _1.actual_begin = _1.processed
         left join _0 _2 on _0.id = _2.id and _2.actual_end = _2.processed
         ;
-    """.format(table_name), con),)
+    """.format(table_name), con), None)

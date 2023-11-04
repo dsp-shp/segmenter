@@ -4,11 +4,11 @@ import pandas as pd
 import typing
 
 def check_table(
-    table_name: typing.Union[str, Table],
+    con: typing.Union[engine.Connection, None],
+    table_name: Table,
     get_data: bool = False,
-    con: engine.Connection = None,
     **kwargs
-) -> typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+) -> typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
     """
     Проверка доступности коллекции
     ==============================
@@ -25,8 +25,14 @@ def check_table(
         ...
     
     """
-    get, chunksize = (lambda x:x, None) if get_data == True else (next, 0)
-    table_name.data = get(
-        pd.read_sql('select * from {};'.format(table_name), con, chunksize=chunksize)
-    )
+    params = {
+        'sql': 'select * from {};'.format(table_name),
+        'con': con
+    }
+    
+    if get_data == True:
+        data = pd.read_sql(**params)
+    else:
+        data = next(pd.read_sql(**params, chunksize=0))
+
     return (table_name.data, False if table_name.data is None else True)

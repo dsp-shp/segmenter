@@ -7,7 +7,7 @@ def check_cron(
     refresh_cron:str,
     date:datetime = datetime.now().replace(microsecond=0, tzinfo=None),
     **kwargs
-) -> typing.Tuple[pd.core.series.Series, typing.Union[bool, None]]:
+) -> typing.Tuple[pd.Series, typing.Union[bool, None]]:
     """
     Проверка готовности по CRON-расписанию
     ======================================

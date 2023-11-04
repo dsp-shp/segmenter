@@ -30,15 +30,28 @@ class Logger(logging.Logger):
         fmt: свойство системы – формат сообщения
     
     """
+
+    @property
+    def id(self) -> str: return self._id
+    """ Идентификатор лога """
+
+    @property
+    def table(self) -> Table: return self._table
+    """ Таблица """
+
+    @property
+    def fmt(self) -> str: return self._fmt
+    """ Стиль форматирования лога """
+
     def __init__(
         self, 
         id: str,
-        table: str,
+        table: Table,
         name: str = 'Сегментер',
         level: int = logging.INFO,
         fmt: str = '[%(name)s] {%(levelname)s} – %(message)s',
-        handler: logging.Handler = None, 
-        connect: typing.Callable = None
+        handler: typing.Union[logging.Handler, None] = None, 
+        connect: typing.Union[typing.Callable, None] = None
     ) -> None:
         super().__init__(name, level)
 
@@ -52,34 +65,31 @@ class Logger(logging.Logger):
         self.addHandler(self._handler)
 
         self._id = id
-        self._table = Table(table)
+        self._table = table
         self._fmt = fmt
         
         self.info(
             'Инициализировано логирование для {}\n' + '-' * 69, self._id
         )
         
-        if not connect:
+        self.connect: typing.Union[typing.Callable, None] = connect
+        """ Функция подключения к хранилищу данных """
+
+        if not self.connect:
             self.warning('Не передан метод подключения к хранилищу')
             return
-        self.connect = connect
+        
         with self.connect() as con:
             self._table.data = pd.read_sql_query(
                 'select * from {} limit 0;'.format(self._table), 
                 con
             )
 
-    def __call__(self, method: typing.Callable) -> typing.Callable:
-        return dict(inspect.getmembers(self)).get(method, None)
-
-    @property
-    def id(self) -> str: return self._id
-
-    @property
-    def table(self) -> Table: return self._table
-
-    @property
-    def fmt(self) -> str: return self._fmt
+    def __call__(
+        self, 
+        method: typing.Callable
+    ) -> typing.Union[typing.Callable, None]:
+        return dict(inspect.getmembers(self)).get(str(method), None)
 
     def __decorate_log(func: typing.Callable) -> typing.Callable:
         """
@@ -146,7 +156,7 @@ class Logger(logging.Logger):
         def wrapper(
             *args,
             func: typing.Callable = func,
-            logger: logging.Logger = self, 
+            logger: Logger = self, 
             **kwargs
         ) -> typing.Any:
 
@@ -160,11 +170,11 @@ class Logger(logging.Logger):
                     любого другого типа: вернуть str() строку
 
                 """
-                if isinstance(data, pd.core.frame.DataFrame):
+                if isinstance(data, pd.DataFrame):
                     with StringIO() as buf:
                         data.info(buf=buf)
                         return buf.getvalue()
-                elif isinstance(data, pd.core.series.Series):
+                elif isinstance(data, pd.Series):
                     return '\n'.join((str(type(data)), *data.to_string().splitlines(), ''))
                 else:
                     return str(data)
@@ -192,9 +202,11 @@ class Logger(logging.Logger):
                             __signature_args[j] = i
                 params = {_[0]: str(_[1]) for _ in (*__signature_args.items(), *__signature_kwargs.items())}
             except Exception:
+                params = {}
                 logger.warning(format_exc())
 
-            message = findall('[^\ \n]+.+[^\ \n]+', func.__doc__)[0]
+            doc = func.__doc__ if func.__doc__ else ''
+            message = findall('[^ \n]+.+[^ \n]+', doc)[0]
             log = {
                 **{k:v for k,v in kwargs.items() if k in logger.table.data.columns},
                 'id': str(logger.id),
@@ -204,9 +216,11 @@ class Logger(logging.Logger):
                 'error': None
             }
 
+            data, __data =  None, None
             try:
-                with logger.connect() as con:
-                    data, *__data = func(*args, con=con, **kwargs)
+                if logger.connect:
+                    with logger.connect() as con:
+                        data, *__data = func(*args, con=con, **kwargs)
                 message += ': ' + _format_res(data)
                 log.update({'message': message})
                 logger.info(message)

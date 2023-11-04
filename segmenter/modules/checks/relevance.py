@@ -4,10 +4,10 @@ import pandas as pd
 import typing
 
 def check_relevance(
-    segment_id: str = None,
-    con: engine.Connection = None,
+    con: engine.Connection,
+    segment_id: typing.Union[str, None] = None,
     **kwargs
-) -> typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+) -> typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
     """
     Проверка актуальности сегмента
     ==============================
@@ -27,6 +27,6 @@ def check_relevance(
             and "action" != 'refresh_segments'
             and error is null
         ;
-    """.format(segment_id=segment_id), con)
+    """.format(segment_id=segment_id), con=con)
 
     return (data, data.iloc[0].relevance)

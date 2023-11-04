@@ -1,5 +1,5 @@
 from .modules import checks, refreshers, updaters
-from .modules.utils import Logger, Table, Manager
+from .modules.utils import Logger, Table
 from contextlib import contextmanager
 from datetime import datetime
 from sqlalchemy import create_engine, engine
@@ -17,14 +17,13 @@ class Segmenter:
     Класс, реализующий управление сегментами и аудиториями.
 
     Методы:
-        __init__: инициализация объекта, сервисных апдейтеров и логирования,
+    *   __init__: инициализация объекта, сервисных апдейтеров и логирования,
             подключение к хранилищу данных, проверка доступности коллекций
-        connect (contextmanager): подключение к хранилищу данных
-        select_segments: получение актуальных сегментов
-        refresh_segments: batch-пересчет сегментов
-        select_audiences: получение перечня аудиторий (из кабинета)
-        update_audiences: обновление аудиторий
-        ### run: основная рабочая функция, выполняющая весь набор обработок
+    *   connect (contextmanager): подключение к хранилищу данных
+    *   select_segments: получение актуальных сегментов
+    *   refresh_segments: batch-пересчет сегментов
+    *   select_audiences: получение перечня аудиторий (из кабинета)
+    *   update_audiences: обновление аудиторий
 
     """
     def __init__(
@@ -66,7 +65,7 @@ class Segmenter:
         self.sql_eng = create_engine(
             '{driver}://{login}:{password}@{host}:{port}/{schema}'.format(**con)
         )
-        self.logger = Logger(self.id, log_table, connect=self.connect)
+        self.logger = Logger(self.id, Table(log_table), connect=self.connect)
 
         ### Декорирование используемых функций методом логгера
         global checks, refreshers, updaters
@@ -81,19 +80,20 @@ class Segmenter:
         self.cfg_table = Table(cfg_table)
         checks.check_table(self.logger.table)
         checks.check_table(self.cfg_table, get_data=True)
-        self.cfg_table.data.table_name = self.cfg_table.data.table_name.map(Table, 'ignore')
+        if not self.cfg_table.data.empty:
+            self.cfg_table.data.table_name = self.cfg_table.data.table_name.map(Table, 'ignore')
     
         ### Инициализация менеджеров
-        self.managers = {k: Manager(id=k, **v) for k,v in consumers}
+        # self.managers = {k: Manager(id=k, **v) for k,v in consumers}
 
     @contextmanager
-    def connect(self) -> engine.base.Connection:
+    def connect(self) -> typing.Generator[engine.Connection, typing.Any, None]:
         """
         Подключение к хранилищу данных
         ==============================
 
         """
-        con = self.sql_eng.connect()
+        con: engine.Connection = self.sql_eng.connect()
         try:
             yield con
         finally:
@@ -102,7 +102,7 @@ class Segmenter:
     def select_segments(
         self, 
         **kwargs
-    ) -> typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+    ) -> typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
         """
         Получение актуальных сегментов
         ==============================
@@ -111,9 +111,9 @@ class Segmenter:
 
         Метод возвращает перечень готовых к пересчету сегментов. Такие сегменты
         должны:
-            * быть автообновляемыми: `refresh_auto` == true,
-            * иметь CRON-расписание: `refresh_cron` is not null,
-            * иметь параметры обновления: `refresh_params` != '{}'
+        *   быть автообновляемыми: `refresh_auto` == true,
+        *   иметь CRON-расписание: `refresh_cron` is not null,
+        *   иметь параметры обновления: `refresh_params` != '{}'
 
         """
         return (self.cfg_table.data[
@@ -122,12 +122,12 @@ class Segmenter:
             (self.cfg_table.data.refresh_params != {})
         ][
             ['segment_id', 'segment_name', 'table_name', 'refresh_cron', 'refresh_params']
-        ].copy(),)
+        ].copy(), None)
 
     def refresh_segments(
         self,
         **kwargs
-    ) -> typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+    ) -> typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
         """
         Пересчет сегментов
         ==================
@@ -143,14 +143,14 @@ class Segmenter:
         и обновить сегмент соответствующим рефрешером.
 
         Возвращает:
-            typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+            typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
                 кортеж, содержащий датафрейм c переченем сегментов
 
         """
         global refreshers
         refreshed = pd.DataFrame()
         
-        for _ in self.select_segments().itertuples(index=False):
+        for _ in self.select_segments()[0].itertuples(index=False):
             skip = False
             for check in checks.__dict__.values():
                 if not check(**_._asdict()):
@@ -161,24 +161,23 @@ class Segmenter:
             vars(refreshers)['refresh_' + refresh](**_._asdict(), **params)
             refreshed = pd.concat([refreshed, pd.DataFrame([_])], ignore_index=True)
         
-        return (refreshed,)
+        return (refreshed, None)
 
-    def select_audiences(self):
-        """
-        Получение перечня аудиторий
-        ===========================
+    # def select_audiences(self):
+    #     """
+    #     Получение перечня аудиторий
+    #     ===========================
         
-        """
-        global updaters
+    #     """
+    #     global updaters
 
-
-        for consumer, target in self.cfg_table.data[
-            ~(self.cfg_table.data.update_consumer.isna()) &
-            ~(self.cfg_table.data.update_target.isna())
-        ][
-            ['update_consumer', 'update_target']
-        ].itertuples():
-            self.logger.decorate((self.updaters[target].select()))
+    #     for consumer, target in self.cfg_table.data[
+    #         ~(self.cfg_table.data.update_consumer.isna()) &
+    #         ~(self.cfg_table.data.update_target.isna())
+    #     ][
+    #         ['update_consumer', 'update_target']
+    #     ].itertuples():
+    #         self.logger.decorate((self.updaters[target].select()))
 
     def update_audiences(self):
         """
@@ -188,8 +187,8 @@ class Segmenter:
         Для каждого актуального и успешно обновленного сегмента:
 
         """
-        for _ in self.managers:
-            pass
+        # for _ in self.managers:
+        pass
 
         # consumer
             # segment

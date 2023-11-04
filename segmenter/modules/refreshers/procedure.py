@@ -1,14 +1,14 @@
 from ..utils import Table
-from sqlalchemy import engine
+from sqlalchemy import engine, text
 import pandas as pd
 import typing
 
 def refresh_procedure(
     table_name: Table,
-    sql: str = None,
-    con: engine.Connection = None,
+    sql: str,
+    con: engine.Connection,
     **kwargs
-) -> typing.Tuple[pd.core.frame.DataFrame, typing.Union[bool, None]]:
+) -> typing.Tuple[pd.DataFrame, typing.Union[bool, None]]:
     """
     Процедурный пересчет сегмента
     =============================
@@ -26,7 +26,7 @@ def refresh_procedure(
         pd.core.frame.DataFrame: датафрейм с обработанными записями сегмента
     
     """
-    con.execute(sql)
+    con.execute(text(sql))
 
     return (pd.read_sql("""
         with _0 as (
@@ -41,4 +41,4 @@ def refresh_procedure(
         left join _0 _1 on _0.id = _1.id and _1.actual_begin = _1.processed
         left join _0 _2 on _0.id = _2.id and _2.actual_end = _2.processed
         ;
-    """.format(table_name), con),)
+    """.format(table_name), con), None)
